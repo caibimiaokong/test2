@@ -1,18 +1,30 @@
 part of 'location_bloc.dart';
 
-@immutable
-sealed class LocationState {}
+enum MapStatus { initial, loading, loaded, error }
 
-final class LocationInitial extends LocationState {}
-
-final class LocationLoading extends LocationState {}
-
-final class LocationLoaded extends LocationState {
+class MapState extends Equatable {
+  final MapStatus status;
   final LatLng location;
-  LocationLoaded({required this.location});
-}
+  final String mapType;
 
-final class LocationError extends LocationState {
-  final String message;
-  LocationError(this.message);
+  const MapState({
+    this.status = MapStatus.initial,
+    this.location = const LatLng(30, 114),
+    this.mapType = '',
+  });
+
+  MapState copyWith({
+    MapStatus? status,
+    LatLng? location,
+    String? mapType,
+  }) {
+    return MapState(
+      status: status ?? this.status,
+      location: location ?? this.location,
+      mapType: mapType ?? this.mapType,
+    );
+  }
+
+  @override
+  List<Object?> get props => [status, location, mapType];
 }

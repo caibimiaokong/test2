@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:material_floating_search_bar_2/material_floating_search_bar_2.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:test2/bloc/location_bloc.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:test2/simple_bloc_observer.dart';
+import 'package:test2/repository/repository.dart';
+import 'package:test2/widget/maptype_bottom_sheet.dart';
 
 void main() {
-  Bloc.observer = const SimpleBlocObserver();
   runApp(const MyApp());
 }
 
@@ -19,48 +17,55 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Cupertino App',
-      home: BlocProvider<LocationBloc>(
-        create: (context) => LocationBloc(),
-        child: const Map(),
+      home: Scaffold(
+        body: RepositoryProvider(
+          create: (context) => MapRespository(),
+          child: BlocProvider<MapBloc>(
+            create: (context) =>
+                MapBloc(mapRespository: context.read<MapRespository>())
+                  ..add(LocationRequested()),
+            child: Builder(builder: (context) {
+              return BlocBuilder<MapBloc, MapState>(
+                builder: (context, state) {
+                  switch (state.status) {
+                    case MapStatus.initial:
+                      return const Center(child: CircularProgressIndicator());
+                    case MapStatus.loading:
+                      return MapScreen(
+                        mapType: state.mapType,
+                      );
+                    case MapStatus.loaded:
+                      return MapScreen(
+                        location: state.location,
+                        mapType: state.mapType,
+                      );
+                    case MapStatus.error:
+                      return const Center(child: Text('something went wrong'));
+                  }
+                },
+              );
+            }),
+          ),
+        ),
       ),
     );
   }
 }
 
-class Map extends StatelessWidget {
-  const Map({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<LocationBloc, LocationState>(
-      builder: (context, state) {
-        switch (state) {
-          case LocationInitial():
-            return const MyHomePage();
-          case LocationLoading():
-            return const Center(child: CircularProgressIndicator());
-          case LocationLoaded():
-            return MyHomePage(location: state.location);
-          case LocationError():
-            return Center(child: Text(state.message));
-        }
-      },
-    );
-  }
-}
-
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({
+class MapScreen extends StatefulWidget {
+  const MapScreen({
     super.key,
     this.location,
+    required this.mapType,
   });
   final LatLng? location;
+  final String mapType;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _MapScreenState extends State<MapScreen> {
   final MapController mapController = MapController();
 
   @override
@@ -70,7 +75,7 @@ class _MyHomePageState extends State<MyHomePage> {
       FlutterMap(
         mapController: mapController,
         options: MapOptions(
-          initialCenter: widget.location ?? const LatLng(36, 114),
+          initialCenter: widget.location ?? const LatLng(30, 114),
           initialZoom: 9.2,
         ),
         children: [
@@ -82,7 +87,7 @@ class _MyHomePageState extends State<MyHomePage> {
             Marker(
               width: 20,
               height: 20,
-              point: widget.location ?? const LatLng(36.031332, 114),
+              point: widget.location ?? const LatLng(30, 114),
               child: const Icon(
                 Icons.location_on,
                 size: 80.0,
@@ -90,15 +95,6 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ),
           ]),
-          RichAttributionWidget(
-            attributions: [
-              TextSourceAttribution(
-                'OpenStreetMap contributors',
-                onTap: () =>
-                    launchUrl(Uri.parse('https://openstreetmap.org/copyright')),
-              ),
-            ],
-          ),
         ],
       ),
       Positioned(
@@ -106,7 +102,7 @@ class _MyHomePageState extends State<MyHomePage> {
           right: 40,
           child: InkWell(
             onTap: () {
-              context.watch<LocationBloc>().add(LocationRequested());
+              context.watch<MapBloc>().add(LocationRequested());
             },
             child: Container(
               width: 50,
@@ -114,71 +110,63 @@ class _MyHomePageState extends State<MyHomePage> {
               decoration: const BoxDecoration(
                   shape: BoxShape.circle, color: Colors.white),
               child: const Icon(
-                Icons.location_on,
+                Icons.my_location,
                 color: Colors.blue,
               ),
             ),
           )),
-      const SearchBar(),
-    ]));
-  }
-}
-
-class SearchBar extends StatelessWidget {
-  const SearchBar({
-    super.key,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final FloatingSearchBarController controller =
-        FloatingSearchBarController();
-    final isPortrait =
-        MediaQuery.of(context).orientation == Orientation.portrait;
-
-    return FloatingSearchBar(
-        hint: 'Search...',
-        controller: controller,
-        scrollPadding: const EdgeInsets.only(top: 16, bottom: 56),
-        transitionDuration: const Duration(milliseconds: 800),
-        transitionCurve: Curves.easeInOut,
-        physics: const BouncingScrollPhysics(),
-        axisAlignment: isPortrait ? 0.0 : -1.0,
-        openAxisAlignment: 0.0,
-        width: isPortrait ? 600 : 500,
-        debounceDelay: const Duration(milliseconds: 500),
-        onQueryChanged: (query) {
-          // Call your model, bloc, controller here.
-        },
-        // Specify a custom transition to be used for
-        // animating between opened and closed stated.
-        transition: CircularFloatingSearchBarTransition(),
-        actions: [
-          FloatingSearchBarAction(
-            showIfOpened: false,
-            child: CircularButton(
-              icon: const Icon(Icons.place),
-              onPressed: () {},
-            ),
-          ),
-          FloatingSearchBarAction.searchToClear(
-            showIfClosed: false,
-          ),
-        ],
-        builder: (context, transition) {
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Material(
-              color: Colors.white,
-              elevation: 4.0,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: Colors.accents.map((color) {
-                  return Container(height: 112, color: color);
-                }).toList(),
+      Positioned(
+          top: 220,
+          right: 40,
+          child: InkWell(
+            onTap: () {
+              _showBottomSheet(context);
+            },
+            child: Container(
+              width: 50,
+              height: 50,
+              decoration: const BoxDecoration(
+                  shape: BoxShape.circle, color: Colors.white),
+              child: const Icon(
+                Icons.layers,
+                color: Colors.blue,
               ),
             ),
-          );
-        });
+          )),
+      Center(
+        child: Container(
+          width: 200,
+          height: 50,
+          decoration: const BoxDecoration(
+              shape: BoxShape.rectangle, color: Colors.white),
+          child: Center(
+            child: Text(
+              widget.mapType,
+              style: const TextStyle(
+                fontSize: 20,
+                color: Colors.blue,
+              ),
+            ),
+          ),
+        ),
+      )
+    ]));
+  }
+
+  void _showBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(16),
+        ),
+      ),
+      context: context,
+      builder: (_) => StationsBottomSheet(
+        onStationTypeSelected: (type) {
+          context.read<MapBloc>().add(ChangeMapType(type));
+        },
+        currentMapType: context.read<MapBloc>().state.mapType,
+      ),
+    );
   }
 }

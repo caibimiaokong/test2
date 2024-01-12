@@ -1,6 +1,11 @@
 part of 'location_bloc.dart';
 
 @immutable
-sealed class LocationEvent {}
+sealed class MapEvent {}
 
-final class LocationRequested extends LocationEvent {}
+final class LocationRequested extends MapEvent {}
+
+final class ChangeMapType extends MapEvent {
+  final String mapType;
+  ChangeMapType(this.mapType);
+}
