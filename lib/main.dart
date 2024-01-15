@@ -7,7 +7,28 @@ import 'package:test2/repository/repository.dart';
 import 'package:test2/widget/maptype_bottom_sheet.dart';
 
 void main() {
+  Bloc.observer = SimpleBlocObserver();
   runApp(const MyApp());
+}
+
+class SimpleBlocObserver extends BlocObserver {
+  @override
+  void onChange(BlocBase bloc, Change change) {
+    super.onChange(bloc, change);
+    debugPrint('${bloc.runtimeType} $change');
+  }
+
+  @override
+  void onTransition(Bloc bloc, Transition transition) {
+    super.onTransition(bloc, transition);
+    debugPrint('${bloc.runtimeType} $transition');
+  }
+
+  @override
+  void onError(BlocBase bloc, Object error, StackTrace stackTrace) {
+    debugPrint('${bloc.runtimeType} $error $stackTrace');
+    super.onError(bloc, error, stackTrace);
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -24,30 +45,35 @@ class MyApp extends StatelessWidget {
             create: (context) =>
                 MapBloc(mapRespository: context.read<MapRespository>())
                   ..add(LocationRequested()),
-            child: Builder(builder: (context) {
-              return BlocBuilder<MapBloc, MapState>(
-                builder: (context, state) {
-                  switch (state.status) {
-                    case MapStatus.initial:
-                      return const Center(child: CircularProgressIndicator());
-                    case MapStatus.loading:
-                      return MapScreen(
-                        mapType: state.mapType,
-                      );
-                    case MapStatus.loaded:
-                      return MapScreen(
-                        location: state.location,
-                        mapType: state.mapType,
-                      );
-                    case MapStatus.error:
-                      return const Center(child: Text('something went wrong'));
-                  }
-                },
-              );
-            }),
+            child: const MainPage(),
           ),
         ),
       ),
+    );
+  }
+}
+
+class MainPage extends StatelessWidget {
+  const MainPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<MapBloc, MapState>(
+      builder: (context, state) {
+        switch (state.status) {
+          case MapStatus.initial:
+            return const Center(child: Text('initial'));
+          case MapStatus.loading:
+            return const Center(child: Text('loading'));
+          case MapStatus.loaded:
+            return MapScreen(
+              location: state.location,
+              mapType: state.mapType,
+            );
+          case MapStatus.error:
+            return const Center(child: Text('something went wrong'));
+        }
+      },
     );
   }
 }

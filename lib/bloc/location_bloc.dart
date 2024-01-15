@@ -29,7 +29,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       debugPrint('location: $location');
       emit(state.copyWith(
         status: MapStatus.loaded,
-        location: LatLng(location.latitude, location.longitude),
+        location: location,
       ));
     } catch (e) {
       emit(state.copyWith(
